@@ -34,23 +34,26 @@ func ConstructormodelTfIdf(arr []ResultFromDto) (*ModelTfIdf, error)  {
 	return &ModelTfIdf{idf, arr, keys, td, numberOfDocuments}, nil
 }
 
-func tfIdfQuery(query string, model *ModelTfIdf) []float64 {
+func tdIdfCalculator(words []string, source map[string]int, model *ModelTfIdf) []float64{
+	result := make([]float64, len(words))
+	for index, word := range words {
+		result[index] = 0
+		if v, ok := source[word]; ok {
+			result[index] += float64(v) * math.Log(float64(model.TotalDocuments)/float64(model.Idf[word]+1))
+		}
+	}
+	return result
+}
+
+func QueryWords(wordsInDoc []string, model *ModelTfIdf) map[string]int {
 	tfmap := make(map[string]int)
-	wordsInDoc := splitInWords(&query)
 	for _, word := range wordsInDoc {
 		if _, ok := tfmap[word]; !ok {
 			tfmap[word] = 0
 		}
 		tfmap[word]++
 	}
-	result := make([]float64, len(model.Keys))
-	for index, word := range model.Keys {
-		result[index] = 0
-		if v, ok := tfmap[word]; ok {
-			result[index] += float64(v) * math.Log(float64(model.TotalDocuments)/float64(model.Idf[word]+1))
-		}
-	}
-	return result
+	return tfmap
 }
 
 func cos_sim(a []float64, b []float64) float64 {
@@ -67,15 +70,4 @@ func cos_sim(a []float64, b []float64) float64 {
 		return 0
 	}
 	return dotProduct / (math.Sqrt(magA) * math.Sqrt(magB))
-}
-
-func tf_idf_doc(index string,  model  *ModelTfIdf) []float64 {
-	result := make([]float64, len(model.Keys))
-	for ind, word := range model.Keys {
-		result[ind] = 0
-		if v, ok := model.Tf[index][word]; ok {
-			result[ind] += float64(v) * math.Log(float64(model.TotalDocuments)/float64(model.Idf[word]+1))
-		}
-	}
-	return result
 }
