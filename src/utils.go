@@ -1,10 +1,9 @@
 package main
 
-import "strings"
-
-func CountOccurrences(word string, text string) int {
+func CountOccurrences(word string, text *string) int {
 	// count number of occurrences of word in text.
-	words := strings.Split(text, " ")
+	texx := text
+	words := splitInWords(texx)
 	count := 0
 	for _, w := range words {
 		if w == word {
@@ -29,8 +28,10 @@ func BoolToInt(b bool) int {
 }
 
 func Compare(word string, a, b ResultFromDto) int {
-	count1 := CountOccurrences(word, a.Text())
-	count2 := CountOccurrences(word, b.Text())
+	text1 := a.Text()
+	text2 := b.Text()
+	count1 := CountOccurrences(word, text1)
+	count2 := CountOccurrences(word, text2)
 	if count1 < count2 {
 		return -1
 	} else if count1 > count2 {
@@ -40,23 +41,21 @@ func Compare(word string, a, b ResultFromDto) int {
 	}
 }
 
-func splitInWords(text string) []string {
+func splitInWords(text *string) []string {
 	// provide better implementation.
-
 	isletter := func(c uint8) bool {
 		return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 	}
-
 	words := make([]string, 0)
 	i := 0
-	for i < len(text) {
+	for i < len(*text) {
 		start := i
 		end := i
-		if isletter(text[i]) {
-			for end+1 < len(text) && isletter(text[end+1]) {
+		if isletter( (*text)[i]) {
+			for end+1 < len(*text) && isletter( (*text)[end+1]) {
 				end++
 			}
-			words = append(words, text[start:end+1])
+			words = append(words, (*text)[start:end+1])
 		}
 		i = end + 1
 	}

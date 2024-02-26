@@ -21,7 +21,7 @@ func Test_splitInWords(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := splitInWords(tt.args.text); !reflect.DeepEqual(got, tt.want) {
+			if got := splitInWords(&tt.args.text); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("splitInWords() = %v, want %v", got, tt.want)
 			}
 		})
@@ -31,15 +31,17 @@ func Test_splitInWords(t *testing.T) {
 func TestCountOccurrences(t *testing.T) {
 	type args struct {
 		word string
-		text string
+		text *string
 	}
+	x1 := string("Hello World")
+	x2 := string("Hello Hello")
 	tests := []struct {
 		name string
 		args args
 		want int
 	}{
-		{"Test 1", args{"Hello", "Hello World"}, 1},
-		// TODO: Add test cases.
+		{"Test 1", args{"Hello", &x1}, 1},
+		{"Test 2", args{"Hello", &x2}, 2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

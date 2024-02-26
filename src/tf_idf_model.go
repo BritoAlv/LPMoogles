@@ -3,14 +3,15 @@ package main
 import "math"
 
 type ModelTfIdf struct {
-	// create a map that will store the idf values for each word.
-	idf            map[string]int
-	keys           []string
-	tf             map[string]map[string]int
-	totalDocuments int
+	// create a map that will store the Idf values for each word.
+	Idf            map[string]int
+	Items          []ResultFromDto
+	Keys           []string
+	Tf             map[string]map[string]int
+	TotalDocuments int
 }
 
-func ConstructormodelTfIdf(arr []ResultFromDto) *ModelTfIdf {
+func ConstructormodelTfIdf(arr []ResultFromDto) (*ModelTfIdf, error)  {
 	idf := make(map[string]int)
 	td := make(map[string]map[string]int, len(arr))
 	numberOfDocuments := len(arr)
@@ -30,24 +31,23 @@ func ConstructormodelTfIdf(arr []ResultFromDto) *ModelTfIdf {
 		td[doc.Name()] = tfmap
 	}
 	keys := Keys[string](idf)
-	return &ModelTfIdf{
-		idf, keys, td, numberOfDocuments}
+	return &ModelTfIdf{idf, arr, keys, td, numberOfDocuments}, nil
 }
 
-func tfIdfQuery(query string, model ModelTfIdf) []float64 {
+func tfIdfQuery(query string, model *ModelTfIdf) []float64 {
 	tfmap := make(map[string]int)
-	wordsInDoc := splitInWords(query)
+	wordsInDoc := splitInWords(&query)
 	for _, word := range wordsInDoc {
 		if _, ok := tfmap[word]; !ok {
 			tfmap[word] = 0
 		}
 		tfmap[word]++
 	}
-	result := make([]float64, len(model.keys))
-	for index, word := range model.keys {
+	result := make([]float64, len(model.Keys))
+	for index, word := range model.Keys {
 		result[index] = 0
 		if v, ok := tfmap[word]; ok {
-			result[index] += float64(v) * math.Log(float64(model.totalDocuments)/float64(model.idf[word]+1))
+			result[index] += float64(v) * math.Log(float64(model.TotalDocuments)/float64(model.Idf[word]+1))
 		}
 	}
 	return result
@@ -69,12 +69,12 @@ func cos_sim(a []float64, b []float64) float64 {
 	return dotProduct / (math.Sqrt(magA) * math.Sqrt(magB))
 }
 
-func tf_idf_doc(index string,  model  ModelTfIdf) []float64 {
-	result := make([]float64, len(model.keys))
-	for ind, word := range model.keys {
+func tf_idf_doc(index string,  model  *ModelTfIdf) []float64 {
+	result := make([]float64, len(model.Keys))
+	for ind, word := range model.Keys {
 		result[ind] = 0
-		if v, ok := model.tf[index][word]; ok {
-			result[ind] += float64(v) * math.Log(float64(model.totalDocuments)/float64(model.idf[word]+1))
+		if v, ok := model.Tf[index][word]; ok {
+			result[ind] += float64(v) * math.Log(float64(model.TotalDocuments)/float64(model.Idf[word]+1))
 		}
 	}
 	return result

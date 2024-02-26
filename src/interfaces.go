@@ -2,10 +2,10 @@ package main
 
 type ResultToWebDto interface {
 	Name() string
-	Snippet() string
+	Snippet() *string
 }
 
 type ResultFromDto interface {
 	ResultToWebDto
-	Text() string
+	Text() *string
 }

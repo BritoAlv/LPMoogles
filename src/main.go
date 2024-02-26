@@ -6,6 +6,8 @@ import (
 	"text/template"
 )
 
+var model ModelTfIdf
+
 func formHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		inputValue := r.FormValue("query")
@@ -18,38 +20,42 @@ func formHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func startSearchFromQuery(inputValue string) []ResultToWebDto {
-	txtItems := read_txt_files_local()
-	items := make([]ResultFromDto, len(txtItems))
-	for i, item := range txtItems {
-		items[i] = &item
-	}
-
 	// passing a sort function here determines which method should be
 	// better.
-	
 	/*
 	Return the document with most ocurrences of the query as a single word, only works for queries with one word.
 	*/
 	/* sort.Slice(items, func(i, j int) bool {
 		return Compare(inputValue, items[i], items[j]) > 0
 	}) */
-
-
-	modelTdIdf := *ConstructormodelTfIdf(items)
-	queryTfIdf := tfIdfQuery(inputValue, modelTdIdf)
-	
-	sort.Slice(items, func(i, j int) bool {
-		result1 := cos_sim(tf_idf_doc(items[i].Name(), modelTdIdf), queryTfIdf)
-		result2 := cos_sim(tf_idf_doc(items[j].Name(), modelTdIdf), queryTfIdf)  
+	queryTfIdf := tfIdfQuery(inputValue, &model)
+	sort.Slice(model.Items, func(i, j int) bool {
+		result1 := cos_sim(tf_idf_doc(model.Items[i].Name(), &model), queryTfIdf)
+		result2 := cos_sim(tf_idf_doc(model.Items[j].Name(), &model), queryTfIdf)  
 		return result1 > result2
-		})
-	
-	return Map(items, func(r ResultFromDto) ResultToWebDto {
+		})	
+	return Map(model.Items, func(r ResultFromDto) ResultToWebDto {
 		return r.(ResultToWebDto)
 	})
 }
 
+
+func setup_model() error {
+	txtItems := read_txt_files_local()
+	items := make([]ResultFromDto, len(txtItems))
+	for i, item := range txtItems {
+		items[i] = &item
+	}
+	m, err := ConstructormodelTfIdf(items)
+	model = *m
+	return err
+}
+
 func main() {
+	err := setup_model()
+	if err != nil{
+		panic("Model can't be created why ?")
+	}
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "principal.html")
 	})

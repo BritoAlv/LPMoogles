@@ -14,20 +14,21 @@ func (r *ResultFromTxtDto) Name() string {
 	return filepath.Base(r.path)
 }
 
-func (r *ResultFromTxtDto) Snippet() string {
+func (r *ResultFromTxtDto) Snippet() *string {
 	maxLen := 200
 	// read the first max_len characters from the file.
 	// if the file is shorter than max_len, return the whole file.
 	// if the file is empty, return an empty string.
 	tt := r.Text()
-	if len(tt) < maxLen {
+	if len(*tt) < maxLen {
 		return tt
 	} else {
-		return tt[:maxLen]
+		sub := (*tt)[:maxLen]
+		return &sub
 	}
 }
 
-func (r *ResultFromTxtDto) Text() string {
+func (r *ResultFromTxtDto) Text() *string {
 	file, err := os.Open(r.path)
 	if err != nil {
 		log.Fatal(err)
@@ -38,7 +39,8 @@ func (r *ResultFromTxtDto) Text() string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return string(buf[:n])
+	sub := string(buf[:n])
+	return &sub 
 }
 
 func read_txt_files_local() []ResultFromTxtDto {
