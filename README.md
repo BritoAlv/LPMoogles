@@ -1,1 +1,1 @@
-An attempt to recreate Moogle C# version using Go language.
+An attempt to recreate Moogle in different programming languages.
