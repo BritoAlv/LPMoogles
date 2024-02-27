@@ -8,11 +8,13 @@ using namespace std;
 vector<string> splitInWords(string &text)
 {
     // provide better implementation.
-    auto isletter = [](char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); };
+    auto isletter = [](char c)
+    { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); };
     vector<string> words = vector<string>();
     for (int i = 0; i < text.size(); i++)
     {
-        if(!isletter(text[i])){
+        if (!isletter(text[i]))
+        {
             continue;
         }
         int start = i;
@@ -35,66 +37,74 @@ vector<string> splitInWords(string &text)
     return words;
 }
 
-struct ResultToWebDto
+class ResultToApiDto
 {
+public:
     string Name;
     string Snippet;
 };
 
-struct ResultFromDto
+class ResultFromDto : public ResultToApiDto
 {
-    string Name;
+public:
     string Text;
 };
 
-ResultToWebDto Wrapper(ResultFromDto &o)
+class ResultFromTxt : public ResultFromDto
 {
-    ResultToWebDto A = *(new ResultToWebDto);
-    A.Name = o.Name;
-    A.Snippet = "";
-    for (int i = 0; i < min(100, (int)o.Text.size()); i++)
+public:
+    ResultFromTxt(string path)
     {
-        A.Snippet += o.Text[i];
+        std::string line;
+        std::ifstream myfile(path); // replace with your file path
+        if (myfile.is_open())
+        {
+            while (getline(myfile, line))
+            {
+                this->Text += line;
+            }
+            myfile.close();
+        }
+        this->Name = filesystem::path(path).filename();
+        this->Snippet = this->Text.substr(0, min((int)this->Text.size(), 100));
     }
-    return A;
-}
+};
 
 class ModelTfIdf
 {
-    public:
-        map<string, int> Idf;
-        vector<ResultFromDto> Items;
-        map<string, map<string, int>> Tf;
-        unsigned long long TotalDocuments;
-        ModelTfIdf(vector<ResultFromDto> &arr)
+public:
+    map<string, int> Idf;
+    vector<ResultFromDto> Items;
+    map<string, map<string, int>> Tf;
+    unsigned long long TotalDocuments;
+    ModelTfIdf(vector<ResultFromDto> &arr)
+    {
+        map<string, int> Idf = *(new map<string, int>());
+        map<string, map<string, int>> Tf = *(new map<string, map<string, int>>());
+        this->TotalDocuments = arr.size();
+        for (ResultFromDto &doc : arr)
         {
-            map<string, int> Idf = *(new map<string, int>());
-            map<string, map<string, int>> Tf = *(new map<string, map<string, int>>());
-            this->TotalDocuments = arr.size();
-            for (ResultFromDto &doc : arr)
+            map<string, int> tfmap = *(new map<string, int>());
+            auto wordsInDoc = splitInWords((doc.Text));
+            for (string &word : wordsInDoc)
             {
-                map<string, int> tfmap = *(new map<string, int>());
-                auto wordsInDoc = splitInWords((doc.Text));
-                for (string &word : wordsInDoc)
+                if (Idf.find(word) == Idf.end())
                 {
-                    if (Idf.find(word) == Idf.end())
-                    {
-                        Idf[word] = 1;
-                    }
-                    if (tfmap.find(word) == tfmap.end())
-                    {
-                        tfmap[word] = 0;
-                    }
-                    tfmap[word]++;
+                    Idf[word] = 1;
                 }
-                Tf[doc.Name] = tfmap;
+                if (tfmap.find(word) == tfmap.end())
+                {
+                    tfmap[word] = 0;
+                }
+                tfmap[word]++;
             }
-            this->Idf = Idf;
-            this->Tf = Tf;
-            this->Items = arr;    
+            Tf[doc.Name] = tfmap;
         }
+        this->Idf = Idf;
+        this->Tf = Tf;
+        this->Items = arr;
+    }
 };
-
 
 vector<float> tdIdfCalculator(vector<string> &words, map<string, int> &source, ModelTfIdf *model)
 {
@@ -145,35 +155,21 @@ float cos_sim(vector<float> A, vector<float> B)
     return result / (sqrt(mag_A) * sqrt(mag_B));
 }
 
-vector<ResultFromDto> read_txt_files_local(const std::string& folderPath)
+vector<ResultFromDto> read_txt_files_local(const std::string &folderPath)
 {
     vector<ResultFromDto> ans = vector<ResultFromDto>();
-    for (const auto& entry : std::filesystem::directory_iterator(folderPath)) {
-        if (entry.path().extension() == ".txt") {
-            
-            std::ifstream inFile(entry.path());
-            std::string line;
-            ResultFromDto current = *(new ResultFromDto());
-            current.Name = entry.path().filename();
-            while (std::getline(inFile, line)) {
-                current.Text += line;
-            }
-            ans.push_back(current);
+    for (const auto &entry : std::filesystem::directory_iterator(folderPath))
+    {
+        if (entry.path().extension() == ".txt")
+        {
+            ResultFromTxt file = *(new ResultFromTxt(entry.path()));
+            ans.push_back(file);
         }
     }
     return ans;
 }
 
-ModelTfIdf model;
-
-void setup_model()
-{
-    vector<ResultFromDto> items = read_txt_files_local("./database");
-    model = *(new ModelTfIdf(items));
-    return;
-}
-
-vector<ResultToWebDto> startSearchFromQuery(string inputValue)
+vector<ResultToApiDto> startSearchFromQuery(string inputValue, ModelTfIdf &model)
 {
     auto querywords = splitInWords(inputValue);
     auto querySource = QueryWords(querywords, model);
@@ -186,46 +182,51 @@ vector<ResultToWebDto> startSearchFromQuery(string inputValue)
             {cos_sim(tdIdfCalculator(querywords, model.Tf[model.Items[i].Name], &model), queryTfIdf), i});
     }
     sort(docs_values.begin(), docs_values.end());
-    vector<ResultToWebDto> ans;
+    vector<ResultToApiDto> ans;
     for (int i = model.TotalDocuments - 1; i >= 0; i--)
     {
-        ans.push_back(Wrapper(model.Items[docs_values[i].second]));
+        ans.push_back(model.Items[docs_values[i].second]);
     }
     return ans;
 }
 
 class hello_world_resource : public http_resource
 {
-  public:
-    shared_ptr<http_response> render_GET(const http_request &req);
-    void set_some_data(const string &s)
-    {
-        data = s;
-    }
-    string data;
+    public:
+        hello_world_resource(ModelTfIdf *model)
+        {
+            this->model = model;
+        }
+        ModelTfIdf *model;
+        shared_ptr<http_response> render_GET(const http_request &req)
+        {
+            string_view datapar = req.get_arg("query");
+            if (datapar == "")
+            {
+                return shared_ptr<http_response>(new string_response("Waiting For A Query", 200));
+            }
+            else
+            {
+                vector<ResultToApiDto> to_show = startSearchFromQuery(string(datapar), *model);
+                string result = "";
+                for (auto &x : to_show)
+                {
+                    result += x.Name;
+                    result += '\n';
+                    result += x.Snippet;
+                    result += '\n';
+                }
+                return shared_ptr<http_response>(new string_response(result, 200));
+            }
+        }
 };
-
-shared_ptr<http_response> hello_world_resource::render_GET(const http_request &req)
-{
-    string_view datapar = req.get_arg("query");
-    set_some_data(datapar == "" ? "Waiting For A Query" : string(datapar));
-    vector<ResultToWebDto> to_show = startSearchFromQuery(this->data);
-    string result = "";
-    for (auto &x : to_show)
-    {
-        result += x.Name;
-        result += '\n';
-        result += x.Snippet;
-        result += '\n';
-    }
-    return shared_ptr<http_response>(new string_response(result, 200));
-}
 
 int main()
 {
-    setup_model();
+    auto items = read_txt_files_local("./database");
+    ModelTfIdf *model = new ModelTfIdf(items);
     webserver ws = create_webserver(8080);
-    hello_world_resource hwr;
+    hello_world_resource hwr = *(new hello_world_resource(model));
     ws.register_resource("/", &hwr, true);
     ws.start(true);
     return 0;
