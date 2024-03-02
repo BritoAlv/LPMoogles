@@ -1,15 +1,14 @@
 #include <bits/stdc++.h>
-#include <httpserver.hpp>
 #include <filesystem>
 #include <fstream>
+#include <httpserver.hpp>
 using namespace httpserver;
 using namespace std;
 
 vector<string> splitInWords(string &text)
 {
     // provide better implementation.
-    auto isletter = [](char c)
-    { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); };
+    auto isletter = [](char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); };
     vector<string> words = vector<string>();
     for (int i = 0; i < text.size(); i++)
     {
@@ -39,20 +38,20 @@ vector<string> splitInWords(string &text)
 
 class ResultToApiDto
 {
-public:
+  public:
     string Name;
     string Snippet;
 };
 
 class ResultFromDto : public ResultToApiDto
 {
-public:
+  public:
     string Text;
 };
 
 class ResultFromTxt : public ResultFromDto
 {
-public:
+  public:
     ResultFromTxt(string path)
     {
         std::string line;
@@ -72,7 +71,7 @@ public:
 
 class ModelTfIdf
 {
-public:
+  public:
     map<string, int> Idf;
     vector<ResultFromDto> Items;
     map<string, map<string, int>> Tf;
@@ -192,33 +191,33 @@ vector<ResultToApiDto> startSearchFromQuery(string inputValue, ModelTfIdf &model
 
 class hello_world_resource : public http_resource
 {
-    public:
-        hello_world_resource(ModelTfIdf *model)
+  public:
+    hello_world_resource(ModelTfIdf *model)
+    {
+        this->model = model;
+    }
+    ModelTfIdf *model;
+    shared_ptr<http_response> render_GET(const http_request &req)
+    {
+        string_view datapar = req.get_arg("query");
+        if (datapar == "")
         {
-            this->model = model;
+            return shared_ptr<http_response>(new string_response("Waiting For A Query", 200));
         }
-        ModelTfIdf *model;
-        shared_ptr<http_response> render_GET(const http_request &req)
+        else
         {
-            string_view datapar = req.get_arg("query");
-            if (datapar == "")
+            vector<ResultToApiDto> to_show = startSearchFromQuery(string(datapar), *model);
+            string result = "";
+            for (auto &x : to_show)
             {
-                return shared_ptr<http_response>(new string_response("Waiting For A Query", 200));
+                result += x.Name;
+                result += '\n';
+                result += x.Snippet;
+                result += '\n';
             }
-            else
-            {
-                vector<ResultToApiDto> to_show = startSearchFromQuery(string(datapar), *model);
-                string result = "";
-                for (auto &x : to_show)
-                {
-                    result += x.Name;
-                    result += '\n';
-                    result += x.Snippet;
-                    result += '\n';
-                }
-                return shared_ptr<http_response>(new string_response(result, 200));
-            }
+            return shared_ptr<http_response>(new string_response(result, 200));
         }
+    }
 };
 
 int main()
